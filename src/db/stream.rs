@@ -83,6 +83,14 @@ impl<'a> Stream<'a> {
             None => return true,
         };
 
+        // Ignore trailing separators on the last keyword, so that a path
+        // completed by the shell (e.g. `z Downloads/`) is treated the same as
+        // `z Downloads`.
+        let keywords_last = match keywords_last.trim_end_matches(path::is_separator) {
+            "" => keywords_last.as_str(),
+            trimmed => trimmed,
+        };
+
         let path = util::to_lowercase(path);
         let mut path = path.as_str();
         match path.rfind(keywords_last) {
@@ -189,9 +197,13 @@ mod tests {
     #[case(&["ba"], "/foo/bar", true)]
     #[case(&["fo"], "/foo/bar", false)]
     // Slash as suffix
-    #[case(&["foo/"], "/foo", false)]
-    #[case(&["foo/"], "/foo/bar", true)]
+    #[case(&["foo/"], "/foo", true)]
+    #[case(&["foo//"], "/foo", true)]
+    #[case(&["foo/"], "/foobar", true)]
+    #[case(&["foo/"], "/foo/bar", false)]
     #[case(&["foo/"], "/foo/bar/baz", false)]
+    #[case(&["bar", "foo/"], "/bar/foo", true)]
+    #[case(&["bar", "foo/"], "/foo/bar", false)]
     #[case(&["foo", "/"], "/foo", false)]
     #[case(&["foo", "/"], "/foo/bar", true)]
     #[case(&["foo", "/"], "/foo/bar/baz", true)]
